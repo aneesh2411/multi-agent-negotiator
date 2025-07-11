@@ -8,25 +8,7 @@ from enum import Enum
 from datetime import datetime
 import uuid
 
-class AgentRole(str, Enum):
-    """Agent roles in the debate"""
-    FINANCE = "finance"
-    OPERATIONS = "operations"
-    MARKETING = "marketing"
-    LEGAL = "legal"
-    TECHNOLOGY = "technology"
-    HUMAN_RESOURCES = "human_resources"
-    CUSTOMER_SERVICE = "customer_service"
-    STRATEGY = "strategy"
-
-class AgentPersonality(str, Enum):
-    """Agent personality types"""
-    COOPERATIVE = "cooperative"
-    COMPETITIVE = "competitive"
-    ANALYTICAL = "analytical"
-    CREATIVE = "creative"
-    CONSERVATIVE = "conservative"
-    PROGRESSIVE = "progressive"
+# Removed AgentRole and AgentPersonality enums for LLM-driven flexibility
 
 class DebateStatus(str, Enum):
     """Debate session status"""
@@ -47,8 +29,8 @@ class Agent(BaseModel):
     """Agent model representing a debate participant"""
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     name: str
-    role: AgentRole
-    personality: AgentPersonality
+    role: str  # Now open-ended, LLM-driven
+    personality: str  # Now open-ended, LLM-driven
     goals: List[str]
     constraints: List[str]
     expertise: List[str]

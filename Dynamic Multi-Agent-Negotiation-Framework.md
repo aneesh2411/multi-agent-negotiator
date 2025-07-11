@@ -27,7 +27,7 @@ This system is designed to create **autonomous, multi-agent debates** around a u
  ✅ Multi-Agent Systems  
  ✅ LLM Reasoning (ReAct, LangGraph)  
  ✅ Memory Architectures (short & long term)  
- ✅ Real-Time UI Communication  
+ ✅ Real-Time UI Communication
  ✅ Google A2A Protocol Integration
 
 ---
