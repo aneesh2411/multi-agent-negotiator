@@ -41,8 +41,8 @@ debate_services: Dict[str, DebateService] = {}  # Track ADK orchestrators per se
 
 # Initialize services
 settings = get_settings()
-agent_service = AgentService()
 memory_service = MemoryService()
+agent_service = AgentService(memory_service)
 
 @app.on_event("startup")
 async def startup_event():
@@ -88,11 +88,11 @@ async def health_check():
 async def start_debate_session(scenario: str, agent_count: int = 5):
     """Start a new debate session with ADK orchestrator"""
     try:
-        # Generate agents for the scenario
+        # Generate agents for the scenario using the agent service
         agents = await agent_service.generate_agents(scenario, agent_count)
         
-        # Create debate service with ADK orchestrator
-        debate_service = DebateService()
+        # Create debate service with ADK orchestrator and MCP tools
+        debate_service = DebateService(memory_service)
         session_id = await debate_service.create_session(scenario, agents)
         
         # Store session and debate service
@@ -108,7 +108,7 @@ async def start_debate_session(scenario: str, agent_count: int = 5):
         
         return {
             "session_id": session_id,
-            "agents": [agent.dict() for agent in agents],
+            "agents": [agent.model_dump() for agent in agents],
             "status": "created",
             "adk_orchestrator": "initialized"
         }
@@ -129,7 +129,7 @@ async def get_session_status(session_id: str):
     return {
         "session_id": session_id,
         "scenario": session.scenario,
-        "agents": [agent.dict() for agent in session.agents],
+        "agents": [agent.model_dump() for agent in session.agents],
         "status": session.status,
         "current_round": session.current_round,
         "consensus_reached": session.consensus_reached,
@@ -210,6 +210,31 @@ async def trigger_consensus(session_id: str):
     except Exception as e:
         logger.error(f"Error evaluating consensus: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/v1/sessions")
+async def get_sessions():
+    """Get all debate sessions"""
+    sessions_list = []
+    for session_id, session in debate_sessions.items():
+        sessions_list.append({
+            "session_id": session_id,
+            "scenario": session.scenario,
+            "status": session.status,
+            "current_round": session.current_round,
+            "consensus_reached": session.consensus_reached,
+            "agents": [{"id": agent.id, "name": agent.name, "role": agent.role} for agent in session.agents],
+            "created_at": session.created_at
+        })
+    return sessions_list
+
+@app.get("/api/v1/sessions/{session_id}/messages")
+async def get_session_messages(session_id: str):
+    """Get all messages for a debate session"""
+    if session_id not in debate_sessions:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    session = debate_sessions[session_id]
+    return session.messages
 
 @app.websocket("/ws/{session_id}")
 async def websocket_endpoint(websocket: WebSocket, session_id: str):

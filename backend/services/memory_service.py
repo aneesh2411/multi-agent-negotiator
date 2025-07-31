@@ -38,11 +38,20 @@ class MemoryService:
             logger.info("Redis connection established")
             
             # Initialize ChromaDB connection
-            self.chroma_client = chromadb.Client(ChromaSettings(
-                chroma_api_impl="rest",
-                chroma_server_host=self.settings.chroma_host,
-                chroma_server_http_port=self.settings.chroma_port
-            ))
+            if self.settings.is_development():
+                # Use embedded ChromaDB for development
+                import os
+                os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
+                self.chroma_client = chromadb.Client()
+                logger.info("Using embedded ChromaDB for development")
+            else:
+                # Use client-server mode for production
+                self.chroma_client = chromadb.Client(ChromaSettings(
+                    chroma_api_impl="rest",
+                    chroma_server_host=self.settings.chroma_host,
+                    chroma_server_http_port=self.settings.chroma_port
+                ))
+                logger.info(f"Using ChromaDB server at {self.settings.chroma_host}:{self.settings.chroma_port}")
             
             # Create collections
             await self._create_collections()

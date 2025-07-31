@@ -1,7 +1,7 @@
 # Multi-Agent Negotiation Framework Dependencies with ADK Support
 
 # Core Framework
-fastapi==0.115.0
+fastapi==0.116.1
 uvicorn[standard]==0.35.0
 pydantic==2.11.7
 pydantic-settings==2.10.1
@@ -19,6 +19,7 @@ chromadb==0.5.20
 
 # HTTP and WebSocket
 httpx==0.28.1
+aiohttp==3.9.5
 websockets==15.0.1
 python-multipart==0.0.20
 
@@ -51,9 +52,9 @@ authlib==1.6.0
 numpy==2.3.1
 pandas==2.2.3
 
-# Optional: Additional AI/ML Libraries
-# openai==1.58.1  # If you want to keep OpenAI as fallback
-# anthropic==0.40.0  # If you want to support Claude
+# Multi-LLM Support
+openai==1.58.1  # OpenAI GPT models
+anthropic==0.40.0  # Anthropic Claude models
 
 # Optional: Advanced Consensus Algorithms
 # scipy==1.14.1  # For advanced mathematical consensus methods

@@ -2,8 +2,9 @@
 Configuration management for the Multi-Agent Negotiation Framework with ADK support
 """
 
-from pydantic import BaseSettings, Field
-from typing import Optional, Dict, Any
+from pydantic import Field
+from pydantic_settings import BaseSettings
+from typing import Optional, Dict, Any, List
 import os
 
 class Settings(BaseSettings):
@@ -35,18 +36,40 @@ class Settings(BaseSettings):
     memory_ttl_seconds: int = Field(default=3600, env="MEMORY_TTL_SECONDS")  # 1 hour
     max_session_history: int = Field(default=1000, env="MAX_SESSION_HISTORY")
     
-    # LLM Settings (Legacy - kept for backward compatibility)
-    llm_provider: str = Field(default="openai", env="LLM_PROVIDER")
-    llm_model_name: str = Field(default="gpt-4", env="LLM_MODEL_NAME")
-    llm_temperature: float = Field(default=0.7, env="LLM_TEMPERATURE")
-    llm_max_tokens: int = Field(default=1024, env="LLM_MAX_TOKENS")
+    # Multi-LLM Provider Settings
+    # OpenAI Configuration
     openai_api_key: Optional[str] = Field(default=None, env="OPENAI_API_KEY")
+    openai_organization: Optional[str] = Field(default=None, env="OPENAI_ORGANIZATION")
+    openai_default_model: str = Field(default="gpt-4", env="OPENAI_DEFAULT_MODEL")
+    openai_temperature: float = Field(default=0.7, env="OPENAI_TEMPERATURE")
+    openai_max_tokens: int = Field(default=2048, env="OPENAI_MAX_TOKENS")
+    openai_timeout: int = Field(default=60, env="OPENAI_TIMEOUT")
     
-    # Google ADK Settings
+    # Anthropic Configuration
+    anthropic_api_key: Optional[str] = Field(default=None, env="ANTHROPIC_API_KEY")
+    anthropic_default_model: str = Field(default="claude-3-5-sonnet-20241022", env="ANTHROPIC_DEFAULT_MODEL")
+    anthropic_temperature: float = Field(default=0.7, env="ANTHROPIC_TEMPERATURE")
+    anthropic_max_tokens: int = Field(default=2048, env="ANTHROPIC_MAX_TOKENS")
+    anthropic_timeout: int = Field(default=60, env="ANTHROPIC_TIMEOUT")
+    
+    # Google/Gemini Configuration
     google_api_key: Optional[str] = Field(default=None, env="GOOGLE_API_KEY")
     google_project_id: Optional[str] = Field(default=None, env="GOOGLE_PROJECT_ID")
     google_location: str = Field(default="us-central1", env="GOOGLE_LOCATION")
+    google_default_model: str = Field(default="gemini-2.0-flash", env="GOOGLE_DEFAULT_MODEL")
+    google_temperature: float = Field(default=0.7, env="GOOGLE_TEMPERATURE")
+    google_max_tokens: int = Field(default=2048, env="GOOGLE_MAX_TOKENS")
+    google_timeout: int = Field(default=60, env="GOOGLE_TIMEOUT")
     use_vertex_ai: bool = Field(default=False, env="GOOGLE_GENAI_USE_VERTEXAI")
+    
+    # LLM Provider Selection
+    available_llm_providers: list = Field(default=["openai", "anthropic", "google"], env="AVAILABLE_LLM_PROVIDERS")
+    default_llm_provider: str = Field(default="google", env="DEFAULT_LLM_PROVIDER")
+    enable_multi_llm: bool = Field(default=True, env="ENABLE_MULTI_LLM")
+    
+    # LLM Selection Strategy
+    llm_selection_strategy: str = Field(default="orchestrator_choice", env="LLM_SELECTION_STRATEGY")  # orchestrator_choice, random, round_robin
+    llm_diversity_preference: float = Field(default=0.8, env="LLM_DIVERSITY_PREFERENCE")  # 0.0 = no diversity, 1.0 = max diversity
     
     # ADK Model Configuration
     adk_model_name: str = Field(default="gemini-2.0-flash", env="ADK_MODEL_NAME")
@@ -208,6 +231,85 @@ class Settings(BaseSettings):
             return False
         
         return True
+    
+    def get_llm_config(self, provider: str) -> Dict[str, Any]:
+        """Get configuration for a specific LLM provider"""
+        if provider == "openai":
+            return {
+                "api_key": self.openai_api_key,
+                "organization": self.openai_organization,
+                "model": self.openai_default_model,
+                "temperature": self.openai_temperature,
+                "max_tokens": self.openai_max_tokens,
+                "timeout": self.openai_timeout,
+                "provider": "openai"
+            }
+        elif provider == "anthropic":
+            return {
+                "api_key": self.anthropic_api_key,
+                "model": self.anthropic_default_model,
+                "temperature": self.anthropic_temperature,
+                "max_tokens": self.anthropic_max_tokens,
+                "timeout": self.anthropic_timeout,
+                "provider": "anthropic"
+            }
+        elif provider == "google":
+            return {
+                "api_key": self.google_api_key,
+                "project_id": self.google_project_id,
+                "location": self.google_location,
+                "model": self.google_default_model,
+                "temperature": self.google_temperature,
+                "max_tokens": self.google_max_tokens,
+                "timeout": self.google_timeout,
+                "use_vertex_ai": self.use_vertex_ai,
+                "provider": "google"
+            }
+        else:
+            raise ValueError(f"Unknown LLM provider: {provider}")
+    
+    def get_available_llm_providers(self) -> List[str]:
+        """Get list of available and configured LLM providers"""
+        available = []
+        
+        # Check OpenAI
+        if self.openai_api_key:
+            available.append("openai")
+        
+        # Check Anthropic
+        if self.anthropic_api_key:
+            available.append("anthropic")
+        
+        # Check Google
+        if self.google_api_key:
+            available.append("google")
+        
+        return available
+    
+    def validate_llm_provider(self, provider: str) -> bool:
+        """Validate that a specific LLM provider is properly configured"""
+        if provider == "openai":
+            return bool(self.openai_api_key)
+        elif provider == "anthropic":
+            return bool(self.anthropic_api_key)
+        elif provider == "google":
+            return bool(self.google_api_key)
+        else:
+            return False
+    
+    def get_multi_llm_config(self) -> Dict[str, Any]:
+        """Get multi-LLM configuration"""
+        return {
+            "enabled": self.enable_multi_llm,
+            "available_providers": self.get_available_llm_providers(),
+            "default_provider": self.default_llm_provider,
+            "selection_strategy": self.llm_selection_strategy,
+            "diversity_preference": self.llm_diversity_preference,
+            "provider_configs": {
+                provider: self.get_llm_config(provider) 
+                for provider in self.get_available_llm_providers()
+            }
+        }
 
 # Global settings instance
 _settings: Optional[Settings] = None

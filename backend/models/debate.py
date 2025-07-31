@@ -49,6 +49,16 @@ class Agent(BaseModel):
     adk_config: Dict[str, Any] = Field(default_factory=dict)  # ADK agent configuration
     tools: List[str] = Field(default_factory=list)  # Available tools for this agent
     
+    # MCP Tools configuration
+    mcp_tools: List[str] = Field(default_factory=lambda: [
+        "redis_memory", "chromadb_search", "agent_memory", "debate_history"
+    ])  # MCP tools available to this agent
+    tool_permissions: Dict[str, List[str]] = Field(default_factory=dict)  # Tool-specific permissions
+    
+    # LLM Provider configuration
+    llm_provider: Optional[str] = None  # Which LLM provider to use for this agent
+    llm_config: Dict[str, Any] = Field(default_factory=dict)  # LLM-specific configuration
+    
     class Config:
         use_enum_values = True
 
